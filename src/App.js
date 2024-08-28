@@ -1,35 +1,42 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import { Canvas } from '@react-three/fiber';
-import { useLoader } from '@react-three/fiber';
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
-import Controls from './Controls'; // Import the Controls component
+import Controls from './Controls';
 import Rocks from './Rocks';
 import Plane from './Plane';
-import UI from './UI'; // Import the UI component
-import { AmbientLight, DirectionalLight } from 'three';
-import { MeshStandardMaterial, MeshBasicMaterial, DoubleSide } from 'three';
+import UI from './UI';
 
 function App() {
   const [collisionBoxes, setCollisionBoxes] = useState([]);
+  const [currentColor, setCurrentColor] = useState('#ff0000');
+  const rocksRef = useRef();
+
+  const handleColorChange = useCallback((color) => {
+    setCurrentColor(color);
+  }, []);
+
+  const handlePaint = useCallback((intersection) => {
+    if (rocksRef.current && intersection) {
+      const { point, face } = intersection;
+      rocksRef.current.paintOnRock(
+        point,
+        face.normal,
+        currentColor, 
+        0.05 // Adjusted size of the decal
+      );
+    }
+  }, [currentColor]);
 
   return (
     <>
       <Canvas>
-        {/* Lights */}
-        <ambientLight intensity={0.5} /> {/* Soft light that affects all objects */}
-        <directionalLight
-          position={[5, 10, 5]}
-          intensity={1}
-          castShadow
-        /> {/* Strong directional light to simulate sunlight */}
-
-        <Controls rocks={collisionBoxes}/>
+        <ambientLight intensity={0.5} />
+        <directionalLight position={[5, 10, 5]} intensity={1} castShadow />
+        <Controls rocks={collisionBoxes} onPaint={handlePaint} />
         <Plane />
-        <Rocks onUpdate={setCollisionBoxes}/>
+        <Rocks ref={rocksRef} onUpdate={setCollisionBoxes} />
       </Canvas>
-      {/* Crosshair */}
       <div className="crosshair" />
-      <UI />
+      <UI onColorChange={handleColorChange} /> {/* Pass handleColorChange to UI */}
     </>
   );
 }

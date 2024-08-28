@@ -1,8 +1,8 @@
 import React, { useRef, useEffect } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
-import { Vector3, Euler, Quaternion, Box3 } from 'three';
+import { Vector3, Euler, Quaternion, Box3, Raycaster, Vector2 } from 'three';
 
-function Controls({ rocks }) {
+function Controls({ rocks, onPaint }) {
   const { camera, gl } = useThree();
   const movementSpeed = 0.1;
   const mouseSensitivity = 0.002;
@@ -19,7 +19,9 @@ function Controls({ rocks }) {
   const direction = new Vector3();
   const collisionBoxes = useRef([]);
 
-  // Predictive collision detection
+  const raycaster = new Raycaster();
+  const mouse = new Vector2(0, 0);
+
   const checkCollision = (newPosition) => {
     const cameraBox = new Box3().setFromCenterAndSize(newPosition, new Vector3(1, 1, 1));
 
@@ -39,12 +41,10 @@ function Controls({ rocks }) {
     if (keys.current['a']) movementVector.x -= movementSpeed;
     if (keys.current['d']) movementVector.x += movementSpeed;
 
-    // Calculate direction based on camera's yaw
     direction.copy(movementVector);
     direction.applyQuaternion(tempQuaternion.setFromEuler(new Euler(0, yaw.current, 0, 'XYZ')));
     const potentialNewPosition = camera.position.clone().add(direction);
 
-    // Check for collisions
     if (!checkCollision(potentialNewPosition)) {
       camera.position.copy(potentialNewPosition);
     }
@@ -53,20 +53,25 @@ function Controls({ rocks }) {
     yaw.current -= mouseMovement.current.x * mouseSensitivity;
     pitch.current -= mouseMovement.current.y * mouseSensitivity;
 
-    // Clamp pitch to avoid flipping
     pitch.current = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, pitch.current));
 
-    // Calculate quaternions
     pitchQuaternion.setFromEuler(new Euler(pitch.current, 0, 0, 'XYZ'));
     yawQuaternion.setFromEuler(new Euler(0, yaw.current, 0, 'XYZ'));
 
-    // Apply the quaternions
     targetQuaternion.identity().multiply(yawQuaternion).multiply(pitchQuaternion);
     camera.quaternion.copy(targetQuaternion);
 
-    // Reset mouse movement
     mouseMovement.current.x = 0;
     mouseMovement.current.y = 0;
+
+    // Ray casting for painting
+    raycaster.setFromCamera(mouse, camera);
+    const intersects = raycaster.intersectObjects(rocks.map(rock => rock.mesh));
+    
+    if (intersects.length > 0 && keys.current['mouse0']) {
+      console.log('Intersection detected, calling onPaint');
+      onPaint(intersects[0]);
+    }
   });
 
   useEffect(() => {
@@ -83,11 +88,25 @@ function Controls({ rocks }) {
       mouseMovement.current.y = e.movementY;
     };
 
+    const handleMouseDown = () => {
+      console.log('Mouse down detected');
+      keys.current['mouse0'] = true;
+    };
+
+    const handleMouseUp = () => {
+      console.log('Mouse up detected');
+      keys.current['mouse0'] = false;
+    };
+
     const handlePointerLockChange = () => {
       if (document.pointerLockElement === gl.domElement) {
         document.addEventListener('mousemove', handleMouseMove);
+        document.addEventListener('mousedown', handleMouseDown);
+        document.addEventListener('mouseup', handleMouseUp);
       } else {
         document.removeEventListener('mousemove', handleMouseMove);
+        document.removeEventListener('mousedown', handleMouseDown);
+        document.removeEventListener('mouseup', handleMouseUp);
       }
     };
 
@@ -104,10 +123,12 @@ function Controls({ rocks }) {
       document.removeEventListener('pointerlockchange', handlePointerLockChange);
       document.removeEventListener('click', requestPointerLock);
       document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mousedown', handleMouseDown);
+      document.removeEventListener('mouseup', handleMouseUp);
       document.removeEventListener('keydown', handleKeyDown);
       document.removeEventListener('keyup', handleKeyUp);
     };
-  }, [gl.domElement]);
+  }, [gl.domElement, onPaint]);
 
   useEffect(() => {
     if (rocks) {
