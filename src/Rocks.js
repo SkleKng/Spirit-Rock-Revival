@@ -20,8 +20,16 @@ const Rocks = forwardRef(({ onUpdate }, ref) => {
 
   useImperativeHandle(ref, () => ({
     paintOnRock: (position, normal, color, size) => {
-      console.log(`Painting at position (${position.x}, ${position.y}, ${position.z}) with color ${color} and size ${size}`);
-      
+      const positionVector = new Vector3(position.x, position.y, position.z);
+      const normalVector = new Vector3(normal.x, normal.y, normal.z);
+    
+      // Check if there is already a decal at this position, if there is don't paint
+      const existingDecal = decals.find(decal => decal.position.distanceTo(positionVector) < 0.01);
+      if (existingDecal) {
+        console.log('Decal already exists at this position');
+        return;
+      }
+    
       const decalGeometry = new PlaneGeometry(size, size);
       const decalMaterial = new MeshBasicMaterial({ 
         color: color, 
@@ -31,15 +39,16 @@ const Rocks = forwardRef(({ onUpdate }, ref) => {
         depthWrite: false,
         side: DoubleSide
       });
-
+    
       const decal = new Mesh(decalGeometry, decalMaterial);
-      
-      decal.position.copy(position);
-      decal.lookAt(position.clone().add(normal));
+    
+      // Positioning and orienting the decal
+      decal.position.copy(positionVector);
+      decal.lookAt(positionVector.clone().add(normalVector));
       decal.renderOrder = 1;
-
+    
       setDecals(prevDecals => [...prevDecals, decal]);
-    },
+    },    
     findRockIndex: (mesh) => {
       return rockMeshes.current.findIndex(rock => rock.mesh === mesh);
     }
