@@ -14,7 +14,7 @@ Features
 -   **Public Viewing**: Anyone can view the virtual rocks and the artwork created by UTD students and alumni.
 -   **Interactive Painting**: Click on the rocks to paint them with the selected color.
 
-How It Works (it is NOT even close to working yet)
+How It Works
 ------------
 
 1.  **User Authentication**: To ensure only UTD Dallas email holders can paint, the system verifies email addresses before allowing painting
